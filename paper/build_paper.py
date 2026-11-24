@@ -28,7 +28,7 @@ OUT = ROOT / "submission" / "Matyrin_Local_LLM_vs_Claude_API.docx"
 
 AUTHOR = "Artem Matyrin"
 STUDENT_ID = "[[Student ID]]"  # highlighted placeholder, to be filled in by the author
-REPO_URL = "[[link to code and data]]"
+REPO_URL = "https://github.com/ArtemM234/llm-cost-local-vs-api"
 TITLE = "Local Language Model or Claude API: The Cost of a Correct Answer on a Home Computer"
 
 BODY_FONT, HEAD_FONT = "Times New Roman", "Arial"
