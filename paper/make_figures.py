@@ -1,8 +1,3 @@
-"""Figures for the paper, computed from results/results.csv and config.toml.
-
-Usage: python paper/make_figures.py   (from the project root)
-"""
-
 from __future__ import annotations
 
 import csv
@@ -23,8 +18,6 @@ from llmcost.costmodel import break_even_volume, local_cost_per_correct, max_dai
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "paper" / "figures"
 
-# Categorical slots 1-3 of the reference palette; each series also has its own line style
-# and marker, so the figures stay readable in greyscale print.
 LOCAL, SONNET, HAIKU = "#2a78d6", "#eb6834", "#1baf7a"
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 
@@ -52,9 +45,8 @@ def main() -> None:
     c_hw = eco.laptop_price_usd
     v_max = max_daily_volume(loc.t_task_s)
 
-    # Figure 1: cost per correct answer against daily volume ------------------------------
     fig, ax = plt.subplots(figsize=(6.2, 3.6))
-    vols = [10 ** (k / 40) for k in range(40, 40 * 5 + 1)]  # 10 .. 100,000 tasks/day
+    vols = [10 ** (k / 40) for k in range(40, 40 * 5 + 1)]
     ax.plot(vols, [local_cost_per_correct(v, c_hw, life, e_kwh, p_el, loc.acc) for v in vols],
             color=LOCAL, label=f"Local, PC bought (${c_hw:,.0f}, {life} years)")
     owned = e_kwh * p_el / loc.acc
@@ -75,7 +67,6 @@ def main() -> None:
     fig.savefig(OUT / "fig1_cost_vs_volume.png")
     plt.close(fig)
 
-    # Figure 2: break-even volume against hardware price ----------------------------------
     fig, ax = plt.subplots(figsize=(6.2, 3.4))
     prices = list(range(300, 3001, 25))
     lo_p, hi_p = min(eco.electricity_usd_per_kwh), max(eco.electricity_usd_per_kwh)
@@ -95,7 +86,6 @@ def main() -> None:
     fig.savefig(OUT / "fig2_breakeven_vs_price.png")
     plt.close(fig)
 
-    # Figure 3: measured decoding speed against the memory-bandwidth ceiling ----------------
     tps = [float(r["gen_tokens_per_s"]) for r in rows if r["model_name"] == "qwen3-8b" and r["gen_tokens_per_s"]]
     import json
     weights = next(json.loads(l)["backend_info"]["weights_bytes"]

@@ -1,5 +1,3 @@
-"""Typed views over config.toml and prices.toml."""
-
 from __future__ import annotations
 
 import tomllib
@@ -13,11 +11,9 @@ class ModelCfg:
     name: str
     backend: Literal["anthropic", "ollama"]
     model: str
-    # anthropic
     thinking: str | None = None
     effort: str | None = None
-    cache: bool = False  # prompt-caching scenario; prompts here are < 512 tokens, so usually no effect
-    # ollama
+    cache: bool = False
     think: bool | None = None
     num_ctx: int | None = None
 
@@ -72,7 +68,7 @@ def load_config(path: Path) -> Config:
 
 @dataclass(frozen=True, slots=True)
 class ModelPrice:
-    input: float  # USD per 1M tokens
+    input: float
     output: float
     cache_write_5m: float
     cache_read: float
@@ -88,7 +84,6 @@ class Prices:
     def cost_usd(
         self, model: str, input_tokens: int, output_tokens: int, cache_write: int = 0, cache_read: int = 0
     ) -> tuple[float, float]:
-        """(standard, batch) cost of one request from its `usage` counts."""
         p = self.models[model]
         standard = (
             input_tokens * p.input

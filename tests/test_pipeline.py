@@ -1,5 +1,3 @@
-"""End-to-end with fake backends: run → CSV → analyze, no network and no Mac needed."""
-
 import asyncio
 import csv
 from pathlib import Path
@@ -47,7 +45,7 @@ def test_run_and_analyze(tmp_path, monkeypatch, tasks, capsys):
     async def go():
         await runner.run_api(cfg.model("haiku-5.5"), tasks, 1, cfg, prices, w)
         await runner.run_local(cfg.model("qwen3-8b"), tasks, 2, cfg, w, energy=False)
-        await runner.run_api(cfg.model("haiku-5.5"), tasks, 1, cfg, prices, w)  # resume: nothing to do
+        await runner.run_api(cfg.model("haiku-5.5"), tasks, 1, cfg, prices, w)
 
     asyncio.run(go())
     rows = list(csv.DictReader((tmp_path / "results.csv").open(encoding="utf-8")))
@@ -56,7 +54,6 @@ def test_run_and_analyze(tmp_path, monkeypatch, tasks, capsys):
     assert float(api_row["cost_usd"]) == pytest.approx((100 * 0.10 + 50 * 0.50) / 1e6)
     assert float(api_row["cost_usd_batch"]) == pytest.approx(float(api_row["cost_usd"]) / 2)
 
-    # wall meter: 0.4 Wh net over the run → 0.05 Wh per task (8 tasks)
     run_id = next(r["run_id"] for r in rows if r["model_name"] == "qwen3-8b")
     (tmp_path / "wall_meter.csv").write_text(f"run_id,wh_measured,idle_w\n{run_id},0.4,0\n", encoding="utf-8")
     analyze(tmp_path, cfg)

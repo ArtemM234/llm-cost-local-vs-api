@@ -1,12 +1,3 @@
-"""Runs in a separate `python -I` process: compares a candidate function with the canonical one.
-
-Usage: python -I _sandbox_child.py spec.json result.json
-
-Mirrors EvalPlus' differential testing: expected outputs come from the canonical solution
-on base + plus inputs; float outputs are compared with a tolerance; first failure stops.
-Not a security sandbox — model code runs as the current user (see README).
-"""
-
 import copy
 import io
 import json
@@ -24,7 +15,7 @@ def _allclose(got: object, exp: object, atol: float, rtol: float = 1e-7) -> bool
     def close(a: object, b: object) -> bool:
         if isinstance(a, bool) or not isinstance(a, (int, float)):
             return False
-        return abs(a - b) <= atol + rtol * abs(b)  # numpy.allclose semantics
+        return abs(a - b) <= atol + rtol * abs(b)
 
     if isinstance(exp, float):
         return close(got, exp)
@@ -39,9 +30,6 @@ def _poly(xs: list, x: float) -> float:
 
 def outputs_match(task_id: str, inp: list, got: object, exp: object, atol: float) -> bool:
     if task_id == "HumanEval/32":
-        # find_zero: any root is accepted, EvalPlus checks |poly(x)| <= atol.
-        # Deviation: also accept the canonical root itself — on one plus-input (huge leading
-        # coefficient) the canonical answer fails the pure |poly| check due to float precision.
         if isinstance(got, float) and isinstance(exp, float) and abs(got - exp) <= atol:
             return True
         try:
@@ -69,17 +57,17 @@ def run(spec: dict) -> dict:
     for inp in inputs:
         try:
             expected.append(("ok", ref_fn(*copy.deepcopy(inp))))
-        except BaseException as e:  # noqa: BLE001 - canonical raising = candidate must raise too
+        except BaseException as e:
             expected.append(("exc", type(e).__name__))
 
     real_stdout = sys.stdout
-    sys.stdout = io.StringIO()  # candidate prints must not flood the pipe
+    sys.stdout = io.StringIO()
     try:
         ns: dict = {}
         try:
             exec(compile(spec["candidate"], "<candidate>", "exec"), ns)
             fn = ns[entry]
-        except BaseException as e:  # noqa: BLE001
+        except BaseException as e:
             return {"passed": False, "n_passed": 0, "n_total": len(inputs), "error": f"load: {type(e).__name__}: {e}"[:300]}
 
         for i, (inp, (kind, exp)) in enumerate(zip(inputs, expected)):
@@ -87,7 +75,7 @@ def run(spec: dict) -> dict:
             sys.stdout.truncate()
             try:
                 got = fn(*copy.deepcopy(inp))
-            except BaseException as e:  # noqa: BLE001
+            except BaseException as e:
                 if kind == "exc":
                     continue
                 return {"passed": False, "n_passed": i, "n_total": len(inputs), "error": f"input {i}: {type(e).__name__}: {e}"[:300]}
@@ -102,7 +90,7 @@ def main() -> None:
     spec_path, result_path = sys.argv[1], sys.argv[2]
     with open(spec_path, encoding="utf-8") as f:
         spec = json.load(f)
-    try:  # POSIX only; on macOS RLIMIT_AS is not enforced, CPU limit is
+    try:
         import resource
 
         cpu = int(spec.get("cpu_limit_s", 60))

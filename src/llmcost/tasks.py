@@ -1,5 +1,3 @@
-"""Task sets. Files are downloaded once into data/ and pinned by SHA-256 for reproducibility."""
-
 from __future__ import annotations
 
 import gzip
@@ -17,8 +15,8 @@ TaskSetName = Literal["gsm8k", "humaneval_plus"]
 class Task:
     task_set: TaskSetName
     task_id: str
-    prompt: str  # the exact user message sent to every model
-    reference: dict[str, Any] = field(repr=False)  # everything the checker needs
+    prompt: str
+    reference: dict[str, Any] = field(repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,13 +27,11 @@ class _Source:
 
 
 SOURCES: dict[TaskSetName, _Source] = {
-    # Cobbe et al. 2021, test split (1319 problems)
     "gsm8k": _Source(
         "https://raw.githubusercontent.com/openai/grade-school-math/master/grade_school_math/data/test.jsonl",
         "gsm8k_test.jsonl",
         "3730d312f6e3440559ace48831e51066acaca737f6eabec99bccb9e4b3c39d14",
     ),
-    # Liu et al. 2023 (EvalPlus), HumanEval+ v0.1.10 (164 problems)
     "humaneval_plus": _Source(
         "https://github.com/evalplus/humanevalplus_release/releases/download/v0.1.10/HumanEvalPlus.jsonl.gz",
         "HumanEvalPlus-v0.1.10.jsonl.gz",
@@ -43,7 +39,6 @@ SOURCES: dict[TaskSetName, _Source] = {
     ),
 }
 
-# One prompt template per task set, identical for all models (curator requirement 4).
 GSM8K_TEMPLATE = (
     "Solve the following math problem. You may reason step by step. "
     "On the last line write only the final numeric answer in the form:\n"
@@ -84,7 +79,6 @@ def ensure_file(name: TaskSetName, data_dir: Path) -> Path:
 
 
 def _gsm8k_answer(solution: str) -> str:
-    # Reference solutions end with "#### <answer>"
     return solution.rsplit("####", 1)[1].strip().replace(",", "")
 
 
@@ -124,6 +118,5 @@ def load_tasks(name: TaskSetName, data_dir: Path) -> list[Task]:
 
 
 def select(tasks: list[Task], limit: int | None, offset: int = 0) -> list[Task]:
-    """Deterministic subset: first `limit` tasks after `offset` (pilot = --limit 20)."""
     end = None if limit is None else offset + limit
     return tasks[offset:end]

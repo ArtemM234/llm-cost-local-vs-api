@@ -1,5 +1,3 @@
-"""One checker per task set, applied identically to every model's raw text output."""
-
 from __future__ import annotations
 
 import json
@@ -18,11 +16,9 @@ _CHILD = Path(__file__).with_name("_sandbox_child.py")
 @dataclass(frozen=True, slots=True)
 class CheckResult:
     correct: bool
-    extracted: str  # parsed answer / code that was judged (kept in raw log for audit)
+    extracted: str
     detail: str = ""
 
-
-# ---------- GSM8K: exact numeric answer ---------------------------------------------------
 
 _ANSWER_RE = re.compile(r"ANSWER\s*[:：]\s*[*$\\{(\s]*(-?[\d,]*\.?\d+)", re.IGNORECASE)
 _NUMBER_RE = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
@@ -36,7 +32,6 @@ def _to_number(s: str) -> float | None:
 
 
 def extract_number(text: str) -> str | None:
-    """Last `ANSWER: x`; if the model ignored the format, fall back to the last number."""
     if found := _ANSWER_RE.findall(text):
         return found[-1].replace(",", "")
     if found := _NUMBER_RE.findall(text):
@@ -53,15 +48,12 @@ def check_gsm8k(task: Task, output: str) -> CheckResult:
     return CheckResult(ok, got)
 
 
-# ---------- HumanEval+: differential tests in a subprocess --------------------------------
-
 _FENCE_RE = re.compile(r"```[ \t]*(?:python|py|python3)?[ \t]*\n(.*?)```", re.DOTALL | re.IGNORECASE)
 
 
 def extract_code(output: str, entry_point: str) -> str:
     blocks = _FENCE_RE.findall(output)
     if not blocks:
-        # unterminated fence (hit max_tokens) or no fence at all
         start = output.find("```")
         blocks = [output[output.index("\n", start) + 1 :]] if start != -1 and "\n" in output[start:] else [output]
     with_def = [b for b in blocks if re.search(rf"def\s+{re.escape(entry_point)}\s*\(", b)]
@@ -69,8 +61,6 @@ def extract_code(output: str, entry_point: str) -> str:
 
 
 def build_candidate(prompt: str, code: str, entry_point: str) -> str:
-    """Prompt first (imports + helper functions), then the model's code which redefines the stub.
-    If the model returned only a body, treat it as a completion of the prompt."""
     if re.search(rf"def\s+{re.escape(entry_point)}\s*\(", code):
         return prompt + "\n\n" + code
     return prompt + code

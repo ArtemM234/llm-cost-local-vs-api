@@ -1,5 +1,3 @@
-"""Model backends: same prompt in, raw text + usage + timing out."""
-
 from __future__ import annotations
 
 import os
@@ -17,7 +15,7 @@ from .config import ModelCfg, RunCfg
 class GenResult:
     text: str
     input_tokens: int
-    output_tokens: int  # includes reasoning tokens (billed as output on Claude; generated locally)
+    output_tokens: int
     latency_s: float
     stop_reason: str
     cache_write_tokens: int = 0
@@ -25,7 +23,7 @@ class GenResult:
     gen_tokens_per_s: float | None = None
     prompt_tokens_per_s: float | None = None
     load_s: float | None = None
-    error: str = ""  # infrastructure failure (not a wrong answer); such rows are retried on resume
+    error: str = ""
 
 
 class Backend(Protocol):
@@ -46,8 +44,6 @@ class AnthropicBackend:
             "model": self.cfg.model,
             "max_tokens": self.run.max_tokens,
             "messages": [{"role": "user", "content": prompt}],
-            # No temperature: Claude 5.5 models reject non-default sampling params.
-            # No `fallbacks`: an answer from another model would contaminate the measurement.
         }
         if self.cfg.thinking:
             kwargs["thinking"] = {"type": self.cfg.thinking}
@@ -61,9 +57,8 @@ class AnthropicBackend:
             msg = await self.client.messages.create(**kwargs)
         except (anthropic.BadRequestError, anthropic.AuthenticationError,
                 anthropic.PermissionDeniedError, anthropic.NotFoundError):
-            raise  # configuration error: stop the run instead of logging 1000 failed rows
+            raise
         except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:
-            # 429/5xx/network after SDK retries: infrastructure, not model quality
             return GenResult("", 0, 0, time.perf_counter() - t0, "error", error=f"{type(e).__name__}: {e}"[:300])
         latency = time.perf_counter() - t0
 
@@ -77,7 +72,6 @@ class AnthropicBackend:
             stop_reason=str(msg.stop_reason),
             cache_write_tokens=u.cache_creation_input_tokens or 0,
             cache_read_tokens=u.cache_read_input_tokens or 0,
-            # end-to-end incl. network and time to first token; not comparable to local decode speed
             gen_tokens_per_s=u.output_tokens / latency if latency > 0 else None,
         )
 
@@ -107,7 +101,7 @@ class OllamaBackend:
                 model=self.cfg.model,
                 messages=[{"role": "user", "content": prompt}],
                 options=options,
-                keep_alive="60m",  # keep weights resident: reloads would distort time and energy
+                keep_alive="60m",
                 **kwargs,
             )
         except (ollama.ResponseError, ConnectionError) as e:
@@ -118,18 +112,17 @@ class OllamaBackend:
             return count / (ns / 1e9) if count and ns else None
 
         return GenResult(
-            text=r.message.content or "",  # reasoning (think=true) is in r.message.thinking, not judged
+            text=r.message.content or "",
             input_tokens=r.prompt_eval_count or 0,
             output_tokens=r.eval_count or 0,
             latency_s=latency,
             stop_reason=str(r.done_reason),
-            gen_tokens_per_s=rate(r.eval_count, r.eval_duration),  # pure decode speed, from Ollama timers
+            gen_tokens_per_s=rate(r.eval_count, r.eval_duration),
             prompt_tokens_per_s=rate(r.prompt_eval_count, r.prompt_eval_duration),
             load_s=(r.load_duration or 0) / 1e9,
         )
 
     async def info(self) -> dict[str, Any]:
-        """Weights size and quantization: needed for the bandwidth / model-size estimate."""
         out: dict[str, Any] = {"sdk": "ollama-python"}
         listed = (await self.client.list()).model_dump()
         for m in listed.get("models", []):
@@ -140,7 +133,7 @@ class OllamaBackend:
         running = (await self.client.ps()).model_dump()
         for m in running.get("models", []):
             if m.get("model") == self.cfg.model:
-                out["resident_bytes"] = m.get("size")  # weights + KV cache
+                out["resident_bytes"] = m.get("size")
                 out["resident_vram_bytes"] = m.get("size_vram")
         return out
 

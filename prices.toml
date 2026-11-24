@@ -1,17 +1,13 @@
-# Цены Claude API, USD за 1M токенов. Сверено с официальной страницей.
-# При любом изменении цен: обновить значения И дату fixed_on (дата пишется в каждую строку CSV).
 fixed_on = "2026-11-23"
 source = "https://platform.claude.com/docs/en/about-claude/pricing"
-batch_discount = 0.5  # Batch API: −50% на вход и выход, складывается с кэшированием
+batch_discount = 0.5
 
-# Haiku 5.5: цены для промптов до 100K токенов (наши задачи сильно короче).
 [models."claude-haiku-5-5"]
 input = 0.10
 output = 0.50
 cache_write_5m = 0.125
 cache_read = 0.01
 
-# Sonnet 5.5: чтение из кэша 0.05x от входа (а не стандартные 0.1x).
 [models."claude-sonnet-5-5"]
 input = 2.00
 output = 10.00

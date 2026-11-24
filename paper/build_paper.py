@@ -1,9 +1,3 @@
-"""Builds the paper (.docx) from results/summary.csv, results/breakeven.csv and paper/figures/.
-
-Every number in the text is computed from the result files, so text and data cannot drift apart.
-Usage (from the project root):  python paper/make_figures.py && python paper/build_paper.py
-"""
-
 from __future__ import annotations
 
 import csv
@@ -35,7 +29,6 @@ TITLE = "Local Language Model or Claude API: The Cost of a Correct Answer on a H
 BODY_FONT, HEAD_FONT = "Times New Roman", "Arial"
 
 
-# ---------------------------------------------------------------- numbers from the results
 def load(name: str) -> list[dict[str, str]]:
     with (ROOT / "results" / name).open(encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
@@ -76,8 +69,8 @@ tps_med, tps_min, tps_max = st.median(tps), min(tps), max(tps)
 avg_w = st.fmean(float(r["avg_power_w"]) for r in qrows)
 idle_w = st.fmean(float(r["idle_power_w"]) for r in qrows)
 prompt_tps = st.median(float(r["prompt_tokens_per_s"]) for r in qrows)
-weights_gb = 5.225388164  # runs.jsonl backend_info.weights_bytes / 1e9
-bandwidth = 504.0  # 192-bit bus x 21 Gbit/s (nvidia-smi max memory clock 10,501 MHz)
+weights_gb = 5.225388164
+bandwidth = 504.0
 ceiling = bandwidth / weights_gb
 api_spend = sum(float(r["cost_usd"]) for r in rows if r["backend"] == "anthropic")
 failed_all = sorted({r["task_id"] for r in rows if r["correct"] != "1"}
@@ -86,7 +79,6 @@ failed_all = sorted({r["task_id"] for r in rows if r["correct"] != "1"}
                     & {r["task_id"] for r in rows if r["correct"] != "1" and r["model_name"] == "qwen3-8b"})
 assert failed_all == ["gsm8k/119", "gsm8k/184"], failed_all
 
-# V* if the whole PC drew twice the GPU energy (wall power was not measured)
 def v_star(c_api: float, acc_api: float, e_wh: float, p: float = 0.20) -> float:
     d = acc["qwen3-8b"] * c_api / acc_api - e_wh / 1000 * p
     return hw_day / d if d > 0 else math.inf
@@ -102,7 +94,6 @@ def pct(x: float, d: int = 1) -> str:
 
 
 def usd(x: float, sig: int = 2) -> str:
-    """Small dollar amounts with `sig` significant digits: $0.000030, $0.0013."""
     if x == 0:
         return "$0"
     dec = max(2, sig - 1 - math.floor(math.log10(abs(x))))
@@ -113,10 +104,9 @@ def n0(x: float) -> str:
     return f"{x:,.0f}"
 
 
-# ---------------------------------------------------------------- docx helpers
 doc = Document()
 sec = doc.sections[0]
-sec.page_width, sec.page_height = Inches(8.27), Inches(11.69)  # A4
+sec.page_width, sec.page_height = Inches(8.27), Inches(11.69)
 for side in ("left_margin", "right_margin", "top_margin", "bottom_margin"):
     setattr(sec, side, Inches(1))
 
@@ -139,7 +129,6 @@ for name, size, align in (("Heading 1", 13, WD_ALIGN_PARAGRAPH.CENTER), ("Headin
     pf.alignment, pf.space_before, pf.space_after = align, Pt(12), Pt(6)
     pf.line_spacing_rule, pf.keep_with_next = WD_LINE_SPACING.SINGLE, True
 
-# page number top right, on every page
 hdr = sec.header.paragraphs[0]
 hdr.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 run = hdr.add_run()
@@ -153,18 +142,17 @@ for tag, text in (("begin", None), (None, "PAGE"), ("end", None)):
         el.text = text
     run._r.append(el)
 
-STAR = "⁣"  # placeholder that never occurs in the text
+STAR = "⁣"
 TOKEN = re.compile(r"(\*[^*]+\*|_\{[^}]+\}|\^\{[^}]+\}|\[\[[^\]]+\]\]|<<[^>]+>>)")
 
 
 def add_runs(p, text: str, base_italic: bool = False, bold: bool = False, size: float | None = None) -> None:
-    """Inline markup: *italic*, _{subscript}, ^{superscript}, [[highlighted placeholder]]."""
-    text = text.replace("\\*", STAR)  # "\\*" in the source text = literal asterisk
+    text = text.replace("\\*", STAR)
     for part in TOKEN.split(text):
         if not part:
             continue
         r = p.add_run()
-        if part.startswith("<<"):  # external hyperlink, clickable in the PDF too
+        if part.startswith("<<"):
             url = part[2:-2]
             r.text, r.italic = url, base_italic
             link = OxmlElement("w:hyperlink")
@@ -250,7 +238,7 @@ def table(n: int, title: str, header: list[str], body: list[list[str]], widths: 
     t = doc.add_table(rows=1 + len(body), cols=len(header))
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
     t.autofit = False
-    _border(t._tbl.tblPr, {"top": 8, "bottom": 8})  # APA style: rules only
+    _border(t._tbl.tblPr, {"top": 8, "bottom": 8})
     for i, row in enumerate([header] + body):
         for j, txt in enumerate(row):
             c = t.cell(i, j)
@@ -265,7 +253,6 @@ def table(n: int, title: str, header: list[str], body: list[list[str]], widths: 
     doc.add_paragraph().paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
 
 
-# ---------------------------------------------------------------- title page
 for _ in range(6):
     doc.add_paragraph()
 para(TITLE, indent=False, align=WD_ALIGN_PARAGRAPH.CENTER, bold=True)
@@ -275,7 +262,6 @@ for line in (AUTHOR, f"{STUDENT_ID}, Vistula University, Warsaw", "Architecture 
     para(line, indent=False, align=WD_ALIGN_PARAGRAPH.CENTER)
 page_break()
 
-# ---------------------------------------------------------------- abstract
 para(TITLE, indent=False, align=WD_ALIGN_PARAGRAPH.CENTER, bold=True)
 para("Abstract", indent=False, align=WD_ALIGN_PARAGRAPH.CENTER, bold=True)
 para(
@@ -301,7 +287,6 @@ para("*Keywords:* large language models; inference cost; local deployment; energ
      "break-even analysis", indent=False)
 page_break()
 
-# ---------------------------------------------------------------- 1. Introduction
 h1("1. Introduction")
 h2("1.1 Global/Regional Context")
 para("Large language models are mostly used through commercial APIs that charge per million tokens. At the same "
@@ -331,7 +316,6 @@ h2("1.5 Paper Structure")
 para("Section 2 describes the setup and the cost model, Section 3 gives the measurements and the break-even "
      "volumes, Section 4 discusses them, and Section 5 concludes. The tables are in Section 7.")
 
-# ---------------------------------------------------------------- 2. Methodology
 h1("2. Methodology")
 h2("2.1 Study Area / System Description")
 para("The local machine is a home PC with an AMD Ryzen 7 5700X3D processor, 32 GB of RAM and an NVIDIA GeForce "
@@ -387,7 +371,6 @@ para("Accuracy is given with a 95% Wilson confidence interval (Wilson 1927), whi
      f"run at temperature 0, is not measured. Energy per task varies with answer length (standard deviation "
      f"{float(Q['energy_wh_net_sd']):.3f} Wh), and the average over 200 tasks is used.")
 
-# ---------------------------------------------------------------- 3. Results
 h1("3. Results")
 h2("3.1 Resource / System Potential")
 para("When a model generates text, every new token needs all the weights to be read from memory once, so speed "
@@ -442,7 +425,6 @@ figure(3, FIG / "fig2_breakeven_vs_price.png",
        "Break-Even Volume Against the Price of the Computer. Lines are for $0.20 per kWh, bands cover $0.10 to "
        "$0.35 per kWh, lifetime four years, standard API prices.")
 
-# ---------------------------------------------------------------- 4. Discussion
 h1("4. Discussion")
 h2("4.1 Interpretation of Results")
 para("The result depends mostly on the price of the API model, not on electricity. Sonnet costs "
@@ -472,7 +454,6 @@ para("The study uses one computer, one local model, one set of school maths prob
      "answered a relative difference of 100%. The scoring was not changed. Future work could measure the whole "
      "PC with a wall meter, add programming tasks and larger models, and include prompt caching.")
 
-# ---------------------------------------------------------------- 5. Conclusion
 h1("5. Conclusion")
 para(f"On a home PC with an RTX 4070, qwen3:8b solved {pct(acc['qwen3-8b'], 0)} of 200 GSM8K tasks at "
      f"{usd(owned[0.20])} of electricity per correct answer, cheaper than Claude Haiku 5.5 and much cheaper than "
@@ -481,7 +462,6 @@ para(f"On a home PC with an RTX 4070, qwen3:8b solved {pct(acc['qwen3-8b'], 0)} 
      f"{pct(tps_med / ceiling, 0)} of the memory-bandwidth limit, so memory bandwidth is what sets the speed of "
      "a local model.")
 
-# ---------------------------------------------------------------- required by the submission rules
 h1("Data and Code Availability")
 para(f"The measurement and analysis code, the configuration and prices, the raw model answers, the per-task "
      f"measurements (results.csv), the summary tables and the scripts that produce the figures and this paper are "
@@ -497,7 +477,6 @@ para("Generative AI was used in this work. Claude (Anthropic), through the Claud
      "models is described in Section 2. The authors have reviewed the paper and take full responsibility for its "
      "content.")
 
-# ---------------------------------------------------------------- 6. References
 page_break()
 h1("6. References")
 REFS = [
@@ -545,7 +524,6 @@ for ref in REFS:
     p.paragraph_format.left_indent = Inches(0.5)
     p.paragraph_format.first_line_indent = Inches(-0.5)
 
-# ---------------------------------------------------------------- 7. Appendices
 page_break()
 h1("7. Appendices")
 table(1, "Test Setup. The same tasks, prompt, checker and output limit were used for all three models.",
@@ -595,7 +573,6 @@ table(3, f"Break-Even Volume in Tasks per Day for a $2,000 PC. * means above the
          "per day, so the PC cannot pay off; “never” means the local electricity alone costs more than the API.",
       ["API model, prices, PC lifetime", "$0.10/kWh", "$0.20/kWh", "$0.35/kWh"], body, [2.8, 1.1, 1.1, 1.1])
 
-# ---------------------------------------------------------------- metadata: author only, no tool traces
 now = dt.datetime(2026, 11, 24, 12, 0, 0)
 cp = doc.core_properties
 cp.author = cp.last_modified_by = AUTHOR
@@ -611,8 +588,6 @@ doc.save(OUT)
 
 
 def clean_package(path: Path) -> None:
-    """Drop the library template's leftovers (thumbnail, customXml, app.xml naming another program and
-    zero statistics). Word recomputes pages and words when the file is opened."""
     import zipfile
 
     app = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
@@ -646,13 +621,12 @@ def clean_package(path: Path) -> None:
 clean_package(OUT)
 
 
-# ---------------------------------------------------------------- word count of the main text (sections 1-5)
 def words() -> tuple[int, int]:
     texts = [p.text for p in doc.paragraphs]
     i0 = texts.index("Abstract")
     i1 = texts.index("1. Introduction")
     i2 = texts.index("Data and Code Availability")
-    count = lambda ts: sum(len(t.split()) for t in ts)  # noqa: E731
+    count = lambda ts: sum(len(t.split()) for t in ts)
     return count(texts[i0 + 1:i1]), count(t for t in texts[i1:i2] if not t.startswith("Figure "))
 
 

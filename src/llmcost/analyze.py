@@ -1,5 +1,3 @@
-"""Aggregates results.csv → summary.csv (per model) and breakeven.csv (V* grid)."""
-
 from __future__ import annotations
 
 import csv
@@ -27,11 +25,11 @@ class ModelSummary:
     t_task_s: float
     out_tokens_mean: float
     gen_tps_median: float | None
-    cost_usd_mean: float | None  # API only
+    cost_usd_mean: float | None
     cost_usd_batch_mean: float | None
-    energy_wh_net_mean: float | None  # sensor (powermetrics SoC / nvidia-smi GPU), minus idle
+    energy_wh_net_mean: float | None
     energy_wh_net_sd: float | None
-    energy_wh_wall_mean: float | None  # wall meter, whole machine (if recorded)
+    energy_wh_wall_mean: float | None
     n_errors: int
 
 
@@ -49,8 +47,6 @@ def load_rows(results_dir: Path) -> list[dict[str, str]]:
 
 
 def wall_energy_per_task(results_dir: Path) -> dict[str, float]:
-    """wall_meter.csv: run_id,wh_measured,idle_w — meter reading between START and END lines,
-    and the machine's idle wall power. Returns Wh per task per model_name (task-weighted)."""
     meter, runs = results_dir / "wall_meter.csv", results_dir / "runs.jsonl"
     if not meter.exists() or not runs.exists():
         return {}
@@ -75,7 +71,6 @@ def summarize(rows: list[dict[str, str]], wall: dict[str, float]) -> list[ModelS
     out = []
     for (name, task_set), rs in sorted(groups.items()):
         ok = [r for r in rs if not r["error"]]
-        # a task that later succeeded on resume must not count its failed attempt as an error
         done_keys = {(r["task_id"], r["repeat"]) for r in ok}
         errors = {(r["task_id"], r["repeat"]) for r in rs if r["error"]} - done_keys
         k = sum(int(r["correct"]) for r in ok)
@@ -106,7 +101,6 @@ def breakeven_grid(summaries: list[ModelSummary], cfg: Config) -> list[dict[str,
         by_set[s.task_set].append(s)
     for task_set, ss in by_set.items():
         for loc in (s for s in ss if s.backend == "ollama"):
-            # wall meter covers the whole machine → preferred when available
             e_wh, e_src = ((loc.energy_wh_wall_mean, "wall") if loc.energy_wh_wall_mean is not None
                            else (loc.energy_wh_net_mean, "sensor"))
             if e_wh is None:
@@ -137,7 +131,6 @@ def breakeven_grid(summaries: list[ModelSummary], cfg: Config) -> list[dict[str,
 
 
 def bandwidth_check(results_dir: Path, summaries: list[ModelSummary], cfg: Config) -> list[str]:
-    """tokens/s ≈ bandwidth / weights size: measured decode speed vs the memory-bound ceiling."""
     bw = float(cfg.hardware.get("memory_bandwidth_gbs") or 0)
     runs_path = results_dir / "runs.jsonl"
     if not bw or not runs_path.exists():

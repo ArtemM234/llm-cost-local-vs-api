@@ -21,7 +21,7 @@ def gsm(answer: str) -> Task:
         ("ANSWER: **42**", "42"),
         ("answer: -7", "-7"),
         ("first ANSWER: 3 then corrected ANSWER: 5", "5"),
-        ("The result is 12 apples, total 30.", "30"),  # fallback: last number
+        ("The result is 12 apples, total 30.", "30"),
         ("no digits here", None),
     ],
 )
@@ -69,7 +69,6 @@ def test_vmax_and_wilson():
 def test_parse_sample_variants():
     assert parse_sample({"elapsed_ns": 200e6, "processor": {"combined_power": 5500}}, 0.2) == (0.2, 5.5)
     assert parse_sample({"processor": {"cpu_power": 1000, "gpu_power": 3000, "ane_power": 0}}, 0.2) == (0.2, 4.0)
-    # energy in mJ over a 0.5 s interval → 2 W
     assert parse_sample({"elapsed_ns": 500e6, "processor": {"cpu_energy": 1000}}, 0.2) == (0.5, 2.0)
     assert parse_sample({"processor": {}}, 0.2) is None
 
@@ -96,7 +95,7 @@ def test_humaneval_wrong_solution_fails_and_reference_passes():
     from llmcost.checkers import check
     from llmcost.tasks import load_tasks
 
-    t = load_tasks("humaneval_plus", DATA)[0]  # has_close_elements
+    t = load_tasks("humaneval_plus", DATA)[0]
     wrong = "```python\ndef has_close_elements(numbers, threshold):\n    return False\n```"
     assert not check(t, wrong, 30).correct
     right = ("```python\ndef has_close_elements(numbers, threshold):\n"

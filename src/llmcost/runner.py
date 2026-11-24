@@ -1,5 +1,3 @@
-"""Runs task sets through models and appends one CSV row per (model, task, repeat)."""
-
 from __future__ import annotations
 
 import asyncio
@@ -81,7 +79,6 @@ class ResultWriter:
         self._new = not self.csv_path.exists()
 
     def done_keys(self) -> set[tuple[str, str, int]]:
-        """Rows that finished without infrastructure error are skipped on resume."""
         if self._new:
             return set()
         with self.csv_path.open(newline="", encoding="utf-8") as f:
@@ -119,7 +116,7 @@ def _rows(
         "cost_usd": cost[0], "cost_usd_batch": cost[1], "price_basis": cost[2],
     }
     raw = {"run_id": run_id, "model_name": m.name, "task_id": task.task_id, "repeat": repeat,
-           "solution": extracted, "check_detail": detail, "output": g.text}  # `solution` ~ EvalPlus samples format
+           "solution": extracted, "check_detail": detail, "output": g.text}
     return row, raw
 
 
@@ -167,7 +164,6 @@ async def run_api(m: ModelCfg, tasks: list[Task], repeats: int, cfg: Config, pri
 
 
 async def run_local(m: ModelCfg, tasks: list[Task], repeats: int, cfg: Config, w: ResultWriter, energy: bool) -> None:
-    """Strictly one task at a time: each generation gets its own energy window."""
     backend = make_backend(m, cfg.run)
     run_id = f"{m.name}-{datetime.now(UTC):%Y%m%dT%H%M%SZ}"
     done = w.done_keys()
@@ -209,8 +205,7 @@ async def run_local(m: ModelCfg, tasks: list[Task], repeats: int, cfg: Config, w
                 e |= {"energy_wh_gross": round(joules / 3600, 6),
                       "energy_wh_net": round((joules - idle_w * (b - a)) / 3600, 6),
                       "avg_power_w": round(joules / (b - a), 3),
-                      "energy_coverage": round(covered / (b - a), 3)}  # <0.95 → samples were lost
-            # checking happens outside the energy window
+                      "energy_coverage": round(covered / (b - a), 3)}
             correct, extracted, detail, cost = None, "", "", (None, None, "")
             if not g.error:
                 res = await asyncio.to_thread(check, task, g.text, cfg.run.code_timeout_s)

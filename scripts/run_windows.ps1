@@ -1,7 +1,3 @@
-# Прогон на домашнем ПК (Windows + NVIDIA). Запуск из папки проекта:
-#   powershell -ExecutionPolicy Bypass -File scripts\run_windows.ps1          # пилот, 20 задач
-#   powershell -ExecutionPolicy Bypass -File scripts\run_windows.ps1 -Limit 200
-# Перед запуском закройте игры, браузер с видео и всё, что нагружает видеокарту.
 param([int]$Limit = 20)
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)

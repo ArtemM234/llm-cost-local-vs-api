@@ -1,5 +1,3 @@
-"""llmcost run | selftest | analyze | power-probe"""
-
 from __future__ import annotations
 
 import argparse
@@ -38,7 +36,6 @@ async def _run(args: argparse.Namespace) -> None:
 
 
 def _selftest(args: argparse.Namespace) -> int:
-    """Checker sanity: reference answers must pass, obviously wrong ones must fail."""
     data = Path(args.data)
     failures = 0
     gsm = load_tasks("gsm8k", data)
@@ -53,7 +50,7 @@ def _selftest(args: argparse.Namespace) -> int:
         r = t.reference
         return t.task_id, check(t, f"```python\n{r['prompt']}{r['canonical_solution']}\n```", 120)
 
-    def stub(t):  # signature with `pass` must fail on every task
+    def stub(t):
         r = t.reference
         return t.task_id, check(t, f"```python\ndef {r['entry_point']}(*args, **kwargs):\n    return None\n```", 120)
 

@@ -1,10 +1,3 @@
-"""Power sensors integrated over each generation window.
-
-- macOS / Apple Silicon: `sudo powermetrics` — CPU+GPU+ANE (no DRAM, display, SSD).
-- Windows/Linux + NVIDIA: `nvidia-smi` — GPU board power only (no CPU, RAM, PSU losses).
-Neither sees the whole machine; the wall-plug meter does, which is why the methodology uses both.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -17,14 +10,12 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class PowerSample:
-    t_end: float  # time.monotonic() when the sample arrived (= end of its interval)
+    t_end: float
     duration_s: float
     watts: float
 
 
 def parse_sample(d: dict, fallback_interval_s: float) -> tuple[float, float] | None:
-    """(duration_s, watts) from one powermetrics plist sample. Key names differ across macOS
-    versions: power in mW (`*_power`) or energy in mJ per interval (`*_energy`)."""
     duration = d.get("elapsed_ns", 0) / 1e9 or fallback_interval_s
     proc = d.get("processor", {})
     if "combined_power" in proc:
@@ -40,17 +31,13 @@ def parse_sample(d: dict, fallback_interval_s: float) -> tuple[float, float] | N
 
 
 def parse_nvidia_line(line: str) -> float | None:
-    """Sum of power over all GPUs from one `nvidia-smi --query-gpu=power.draw.instant` tick.
-    With several GPUs, nvidia-smi prints one line per GPU per tick; we run it per GPU index."""
     try:
         return float(line.strip())
     except ValueError:
-        return None  # "[N/A]" or a header
+        return None
 
 
 def integrate(samples: list[PowerSample], a: float, b: float) -> tuple[float, float]:
-    """Energy in joules over [a, b], assuming constant power within each sample interval.
-    Returns (joules, seconds actually covered by samples)."""
     joules = covered = 0.0
     for s in samples:
         lo, hi = max(a, s.t_end - s.duration_s), min(b, s.t_end)
@@ -97,7 +84,6 @@ class PowerSampler:
         self.samples.append(PowerSample(time.monotonic(), duration_s, watts))
 
     async def wait_until(self, t: float, timeout_s: float | None = None) -> None:
-        """Wait until a sample covering time t has arrived."""
         deadline = time.monotonic() + (timeout_s if timeout_s is not None else 3 * self.interval_ms / 1000 + 2)
         while not self.samples or self.samples[-1].t_end < t:
             if time.monotonic() > deadline:
@@ -130,7 +116,6 @@ class PowerMetricsSampler(PowerSampler):
     tool = "powermetrics"
 
     def _command(self) -> list[str]:
-        # -n: never prompt. Run `sudo -v` right before the benchmark to cache credentials.
         return ["sudo", "-n", "powermetrics", "--samplers", "cpu_power,gpu_power,ane_power",
                 "-i", str(self.interval_ms), "-f", "plist"]
 
@@ -142,13 +127,13 @@ class PowerMetricsSampler(PowerSampler):
         buf = b""
         while chunk := await self._proc.stdout.read(65536):
             buf += chunk
-            *docs, buf = buf.split(b"\x00")  # samples are NUL-separated plists
+            *docs, buf = buf.split(b"\x00")
             for doc in docs:
                 if not (doc := doc.strip()):
                     continue
                 try:
                     parsed = parse_sample(plistlib.loads(doc), self.interval_ms / 1000)
-                except Exception:  # noqa: BLE001 - malformed sample, count and move on
+                except Exception:
                     parsed = None
                 if parsed is None:
                     self.parse_failures += 1
@@ -165,7 +150,6 @@ class NvidiaSmiSampler(PowerSampler):
         self.gpu_index = gpu_index
 
     def _command(self) -> list[str]:
-        # power.draw.instant: instantaneous; plain power.draw is a ~1 s moving average on new drivers
         return ["nvidia-smi", "-i", str(self.gpu_index), "--query-gpu=power.draw.instant",
                 "--format=csv,noheader,nounits", "-lms", str(self.interval_ms)]
 
@@ -178,7 +162,6 @@ class NvidiaSmiSampler(PowerSampler):
             if watts is None:
                 self.parse_failures += 1
                 continue
-            # no timestamp from nvidia-smi: the interval is the gap since the previous tick
             gap = now - last if last is not None else self.interval_ms / 1000
             last = now
             self._append(watts, min(gap, 5 * self.interval_ms / 1000))
