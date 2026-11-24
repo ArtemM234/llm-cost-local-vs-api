@@ -1,0 +1,4 @@
+model_name,backend,task_set,n,n_correct,acc,acc_ci_lo,acc_ci_hi,t_task_s,out_tokens_mean,gen_tps_median,cost_usd_mean,cost_usd_batch_mean,energy_wh_net_mean,energy_wh_net_sd,energy_wh_wall_mean,n_errors
+haiku-5.5,anthropic,gsm8k,200,196,0.98,0.949712912759955,0.9921955736378406,0.9229474999999999,116.905,123.6055,7.25e-05,3.625e-05,,,,0
+qwen3-8b,ollama,gsm8k,200,188,0.94,0.8980683066378271,0.9653478058934853,3.1124055,240.785,79.656,,,0.14223184,0.06063214213429513,,0
+sonnet-5.5,anthropic,gsm8k,200,198,0.99,0.9642782379732652,0.997253341891151,1.2857725,100.585,78.667,0.0012867999999999998,0.0006433999999999999,,,,0
