@@ -1,7 +1,7 @@
 # Local language model or Claude API: cost of a correct answer
 
 Code and data for the paper *Local Language Model or Claude API: The Cost of a Correct Answer on a Home Computer*
-(Artem Matyrin, Vistula University, Architecture of Computers, Winter 2026/2027).
+(Artem Matyrin and Andrii Popov, Vistula University, Architecture of Computers, Winter 2026/2027).
 
 The harness gives the first 200 GSM8K test problems to a local model (qwen3:8b via Ollama) and to Claude Haiku 5.5
 and Claude Sonnet 5.5 via the Anthropic API, with one prompt and one automatic checker. It records correctness,

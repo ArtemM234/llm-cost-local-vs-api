@@ -25,10 +25,10 @@ from docx.shared import Inches, Pt
 
 ROOT = Path(__file__).resolve().parents[1]
 FIG = ROOT / "paper" / "figures"
-OUT = ROOT / "submission" / "Matyrin_Local_LLM_vs_Claude_API.docx"
+OUT = ROOT / "submission" / "Matyrin_Popov_Local_LLM_vs_Claude_API.docx"
 
-AUTHOR = "Artem Matyrin"
-STUDENT_ID = "[[Student ID]]"  # highlighted placeholder, to be filled in by the author
+AUTHOR = "Artem Matyrin, Andrii Popov"
+STUDENT_ID = "76671, 75718"
 REPO_URL = "https://github.com/ArtemM234/llm-cost-local-vs-api"
 TITLE = "Local Language Model or Claude API: The Cost of a Correct Answer on a Home Computer"
 
@@ -380,7 +380,7 @@ para("Electricity is the only running cost of the local model, so it is also the
 h2("2.7 Data Sources")
 para("Tasks come from GSM8K (Cobbe et al. 2021), prices from the Anthropic pricing page (Anthropic 2026), and "
      "the graphics card data from NVIDIA (n.d.) and from nvidia-smi on the test machine. All measurements are "
-     "from the author's own runs.")
+     "from the authors' own runs.")
 h2("2.8 Uncertainty Analysis")
 para("Accuracy is given with a 95% Wilson confidence interval (Wilson 1927), which works well for proportions "
      "close to one. Each task was answered once, so the run-to-run variation of the Claude models, which do not "
@@ -491,10 +491,10 @@ h1("Declaration of Generative AI Use")
 para("Generative AI was used in this work. Claude (Anthropic), through the Claude Code tool, was used to help "
      "write the measurement and analysis code, to make the figures, to check the bibliographic data of the "
      "references against arXiv and Crossref, and to draft and edit the English text. The topic, the research "
-     "question and the scope were chosen by the author, and all experiments were run on the author's computer; "
+     "question and the scope were chosen by the authors, and all experiments were run on the authors' own computer; "
      "every number in the paper comes from these runs and is computed from the result files by the published "
      "scripts. Claude Haiku 5.5 and Claude Sonnet 5.5 are also the objects of the study; their use as measured "
-     "models is described in Section 2. The author has reviewed the paper and takes full responsibility for its "
+     "models is described in Section 2. The authors have reviewed the paper and take full responsibility for its "
      "content.")
 
 # ---------------------------------------------------------------- 6. References
