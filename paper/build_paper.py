@@ -19,6 +19,7 @@ from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK, WD_COLOR_INDEX, WD_LINE_SPACING
 from docx.oxml import OxmlElement
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 
@@ -153,7 +154,7 @@ for tag, text in (("begin", None), (None, "PAGE"), ("end", None)):
     run._r.append(el)
 
 STAR = "⁣"  # placeholder that never occurs in the text
-TOKEN = re.compile(r"(\*[^*]+\*|_\{[^}]+\}|\^\{[^}]+\}|\[\[[^\]]+\]\])")
+TOKEN = re.compile(r"(\*[^*]+\*|_\{[^}]+\}|\^\{[^}]+\}|\[\[[^\]]+\]\]|<<[^>]+>>)")
 
 
 def add_runs(p, text: str, base_italic: bool = False, bold: bool = False, size: float | None = None) -> None:
@@ -163,7 +164,14 @@ def add_runs(p, text: str, base_italic: bool = False, bold: bool = False, size: 
         if not part:
             continue
         r = p.add_run()
-        if part.startswith("[["):
+        if part.startswith("<<"):  # external hyperlink, clickable in the PDF too
+            url = part[2:-2]
+            r.text, r.italic = url, base_italic
+            link = OxmlElement("w:hyperlink")
+            link.set(qn("r:id"), p.part.relate_to(url, RT.HYPERLINK, is_external=True))
+            r._r.addprevious(link)
+            link.append(r._r)
+        elif part.startswith("[["):
             r.text, r.italic = part[2:-2], base_italic
             r.font.highlight_color = WD_COLOR_INDEX.YELLOW
         elif part.startswith("*"):
@@ -477,7 +485,7 @@ para(f"On a home PC with an RTX 4070, qwen3:8b solved {pct(acc['qwen3-8b'], 0)} 
 h1("Data and Code Availability")
 para(f"The measurement and analysis code, the configuration and prices, the raw model answers, the per-task "
      f"measurements (results.csv), the summary tables and the scripts that produce the figures and this paper are "
-     f"available at {REPO_URL}. The GSM8K tasks are downloaded from the original public source and checked with "
+     f"available at <<{REPO_URL}>>. The GSM8K tasks are downloaded from the original public source and checked with "
      "a fixed SHA-256 hash. Repeating the run needs Ollama, an NVIDIA graphics card and an Anthropic API key.")
 h1("Declaration of Generative AI Use")
 para("Generative AI was used in this work. Claude (Anthropic), through the Claude Code tool, was used to help "
